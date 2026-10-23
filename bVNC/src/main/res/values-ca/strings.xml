@@ -507,6 +507,7 @@ Si busqueu un augment de rendiment ràpid, proveu de configurar el mode de color
     <string-array name="rdp_connection_type">
         <item>@string/connection_type_rdp</item>
         <item>@string/connection_type_rdp_over_ssh</item>
+        <item>@string/connection_type_rdp_over_tailscale</item>
     </string-array>
     <string name="rdp_descript_geom">Mida de l\'escriptori remot (AmplxAlt)</string>
     <string name="rdp_domain_hint">Domini RDP</string>

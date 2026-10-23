@@ -504,6 +504,7 @@ Se você estiver procurando um rápido aumento de desempenho, tente ajustar o Mo
     <string-array name="rdp_connection_type">
         <item>@string/connection_type_rdp</item>
         <item>@string/connection_type_rdp_over_ssh</item>
+        <item>@string/connection_type_rdp_over_tailscale</item>
     </string-array>
     <string name="rdp_descript_geom">Tamanho do Desktop remoto (WxH)</string>
     <string name="rdp_domain_hint">Domínio de RDP</string>

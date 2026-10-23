@@ -472,6 +472,7 @@ bVNC对应的功能如下：
     <string-array name="rdp_connection_type">
         <item>@string/connection_type_rdp</item>
         <item>@string/connection_type_rdp_over_ssh</item>
+        <item>@string/connection_type_rdp_over_tailscale</item>
     </string-array>
     <string name="rdp_descript_geom">远程桌面大小（WxH）</string>
     <string name="rdp_domain_hint">RDP域</string>

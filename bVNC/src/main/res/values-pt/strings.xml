@@ -507,6 +507,7 @@ Se procura uma melhoria rápida de desempenho, tente definir o modo de Cor para 
     <string-array name="rdp_connection_type">
         <item>@string/connection_type_rdp</item>
         <item>@string/connection_type_rdp_over_ssh</item>
+        <item>@string/connection_type_rdp_over_tailscale</item>
     </string-array>
     <string name="rdp_descript_geom">Tamanho do Ambiente de Trabalho Remoto (LxA)</string>
     <string name="rdp_domain_hint">Domínio RDP</string>

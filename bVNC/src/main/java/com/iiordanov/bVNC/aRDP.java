@@ -23,10 +23,16 @@ import static com.iiordanov.bVNC.Constants.MAX_DESKTOP_SCALE_PERCENTAGE;
 import static com.iiordanov.bVNC.Constants.MIN_DESKTOP_SCALE_PERCENTAGE;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
@@ -37,13 +43,16 @@ import android.widget.TextView;
 import android.widget.ToggleButton;
 
 import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.snackbar.Snackbar;
 import com.iiordanov.bVNC.dialogs.IntroTextDialog;
+import com.iiordanov.bVNC.tailscale.TsnetManager;
 import com.iiordanov.permissions.AudioPermissionGroups;
 import com.iiordanov.permissions.AudioPermissionsManager;
 import com.morpheusly.common.Utilities;
 import com.undatech.opaque.RemoteClientLibConstants;
 import com.undatech.remoteClientUi.R;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -81,17 +90,221 @@ public class aRDP extends MainConfiguration {
     private SeekBar desktopScaleSeekBar;
     private TextView desktopScaleProgressTextView;
 
+    private LinearLayout layoutTailscaleSettings;
+    private TextView tailscaleStatusText;
+    private Button buttonTailscaleLogin;
+    private Button buttonTailscaleLogout;
+    private TextView tailscalePeersLabel;
+    private Spinner spinnerTailscalePeers;
+    private EditText tailscaleAuthKey;
+    private EditText tailscaleHostname;
+    private final List<TsnetManager.PeerInfo> currentTailscalePeers = new ArrayList<>();
+    private final Handler tailscaleUiHandler = new Handler(Looper.getMainLooper());
+    private boolean tailscalePollingActive = false;
+
     @Override
     public void onCreate(Bundle icicle) {
         layoutID = R.layout.main_rdp;
         super.onCreate(icicle);
         setConnectionTypeSpinnerAdapter(R.array.rdp_connection_type);
         initializeRdpSpecificConnectionParameters();
+        initializeTailscaleSettings();
         initializeRdpGatewaySettings();
         initializeRdpColorSpinner();
         initializeRdpResolutionSpinner();
         initializeRdpSecuritySpinner();
         initializeAdvancedSettings();
+    }
+
+    @Override
+    protected void setVisibilityOfTailscaleWidgets(int visibility) {
+        if (layoutTailscaleSettings != null) {
+            layoutTailscaleSettings.setVisibility(visibility);
+            if (visibility == View.VISIBLE) {
+                refreshTailscaleAccountAsync(false, false);
+            }
+        }
+    }
+
+    private void initializeTailscaleSettings() {
+        layoutTailscaleSettings = findViewById(R.id.layoutTailscaleSettings);
+        tailscaleStatusText = findViewById(R.id.tailscaleStatusText);
+        buttonTailscaleLogin = findViewById(R.id.buttonTailscaleLogin);
+        buttonTailscaleLogout = findViewById(R.id.buttonTailscaleLogout);
+        tailscalePeersLabel = findViewById(R.id.tailscalePeersLabel);
+        spinnerTailscalePeers = findViewById(R.id.spinnerTailscalePeers);
+        tailscaleAuthKey = findViewById(R.id.tailscaleAuthKey);
+        tailscaleHostname = findViewById(R.id.tailscaleHostname);
+
+        TsnetManager ts = TsnetManager.getInstance(this);
+        if (tailscaleAuthKey != null) {
+            tailscaleAuthKey.setText(ts.getAuthKey());
+        }
+        if (tailscaleHostname != null) {
+            tailscaleHostname.setText(ts.getHostname());
+        }
+
+        if (buttonTailscaleLogin != null) {
+            buttonTailscaleLogin.setOnClickListener(v -> {
+                saveTailscaleFieldsToManager();
+                refreshTailscaleAccountAsync(true, true);
+            });
+        }
+        if (buttonTailscaleLogout != null) {
+            buttonTailscaleLogout.setOnClickListener(v -> {
+                tailscalePollingActive = false;
+                new Thread(() -> {
+                    try {
+                        TsnetManager.getInstance(aRDP.this).logoutAccount();
+                    } catch (Exception ignored) {
+                    }
+                    tailscaleUiHandler.post(() -> {
+                        tailscaleStatusText.setText(R.string.tailscale_status_not_logged_in);
+                        buttonTailscaleLogout.setVisibility(View.GONE);
+                        tailscalePeersLabel.setVisibility(View.GONE);
+                        spinnerTailscalePeers.setVisibility(View.GONE);
+                    });
+                }).start();
+            });
+        }
+        if (spinnerTailscalePeers != null) {
+            spinnerTailscalePeers.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    if (position >= 0 && position < currentTailscalePeers.size()) {
+                        TsnetManager.PeerInfo peer = currentTailscalePeers.get(position);
+                        TsnetManager.getInstance(aRDP.this).setLastPeerIp(peer.ip);
+                        TsnetManager.getInstance(aRDP.this).setLastPeerName(peer.name);
+                        if (ipText != null && !peer.ip.isEmpty()) {
+                            ipText.setText(peer.ip);
+                        }
+                        if (textNickname != null && (textNickname.getText() == null || textNickname.getText().toString().trim().isEmpty()) && !peer.name.isEmpty()) {
+                            textNickname.setText(peer.name);
+                        }
+                    }
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {
+                }
+            });
+        }
+    }
+
+    private void saveTailscaleFieldsToManager() {
+        TsnetManager ts = TsnetManager.getInstance(this);
+        if (tailscaleAuthKey != null && tailscaleAuthKey.getText() != null) {
+            ts.setAuthKey(tailscaleAuthKey.getText().toString());
+        }
+        if (tailscaleHostname != null && tailscaleHostname.getText() != null) {
+            ts.setHostname(tailscaleHostname.getText().toString());
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private void refreshTailscaleAccountAsync(final boolean begin, final boolean openBrowserIfNeeded) {
+        if (tailscaleStatusText == null) {
+            return;
+        }
+        if (begin) {
+            tailscaleStatusText.setText("Tailscale: подключение к координатору...");
+        }
+        new Thread(() -> {
+            try {
+                final TsnetManager.AccountStatus status = TsnetManager.getInstance(aRDP.this).pollAccountStatus(begin);
+                tailscaleUiHandler.post(() -> applyTailscaleAccountStatus(status, openBrowserIfNeeded));
+            } catch (final Exception e) {
+                tailscaleUiHandler.post(() -> {
+                    String authKey = TsnetManager.getInstance(aRDP.this).getAuthKey();
+                    if (!authKey.isEmpty()) {
+                        tailscaleStatusText.setText("Tailscale: задан Auth Key (" + TsnetManager.getInstance(aRDP.this).getHostname() + ")");
+                    } else if (begin) {
+                        tailscaleStatusText.setText("Tailscale: " + e.getMessage());
+                    }
+                });
+            }
+        }).start();
+    }
+
+    @SuppressLint("SetTextI18n")
+    private void applyTailscaleAccountStatus(TsnetManager.AccountStatus status, boolean openBrowserIfNeeded) {
+        if (isFinishing() || tailscaleStatusText == null) {
+            return;
+        }
+        if (status.running) {
+            tailscalePollingActive = false;
+            String loginInfo = status.login.isEmpty() ? "активен" : status.login;
+            tailscaleStatusText.setText("Tailscale: подключен (" + loginInfo + ") — ПК онлайн: " + status.peers.size());
+            buttonTailscaleLogout.setVisibility(View.VISIBLE);
+            currentTailscalePeers.clear();
+            currentTailscalePeers.addAll(status.peers);
+            if (!currentTailscalePeers.isEmpty()) {
+                tailscalePeersLabel.setVisibility(View.VISIBLE);
+                spinnerTailscalePeers.setVisibility(View.VISIBLE);
+                List<String> labels = new ArrayList<>();
+                String currentIp = ipText != null && ipText.getText() != null ? ipText.getText().toString().trim() : "";
+                String lastIp = TsnetManager.getInstance(this).getLastPeerIp();
+                int selectedIdx = 0;
+                for (int i = 0; i < currentTailscalePeers.size(); i++) {
+                    TsnetManager.PeerInfo p = currentTailscalePeers.get(i);
+                    labels.add(p.toString());
+                    if (!currentIp.isEmpty() && currentIp.equals(p.ip)) {
+                        selectedIdx = i;
+                    } else if (currentIp.isEmpty() && !lastIp.isEmpty() && lastIp.equals(p.ip)) {
+                        selectedIdx = i;
+                    }
+                }
+                ArrayAdapter<String> adapter = new ArrayAdapter<>(this, R.layout.connection_list_entry, labels);
+                adapter.setDropDownViewResource(R.layout.connection_list_entry);
+                spinnerTailscalePeers.setAdapter(adapter);
+                spinnerTailscalePeers.setSelection(selectedIdx);
+            } else {
+                tailscalePeersLabel.setVisibility(View.GONE);
+                spinnerTailscalePeers.setVisibility(View.GONE);
+            }
+        } else {
+            buttonTailscaleLogout.setVisibility(View.GONE);
+            tailscalePeersLabel.setVisibility(View.GONE);
+            spinnerTailscalePeers.setVisibility(View.GONE);
+            String authKey = TsnetManager.getInstance(this).getAuthKey();
+            if (!authKey.isEmpty() && !openBrowserIfNeeded) {
+                tailscaleStatusText.setText("Tailscale: задан Auth Key (" + TsnetManager.getInstance(this).getHostname() + ")");
+                return;
+            }
+            if (!status.authUrl.isEmpty()) {
+                tailscaleStatusText.setText("Tailscale: ожидается вход в браузере...");
+                if (openBrowserIfNeeded) {
+                    try {
+                        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(status.authUrl));
+                        startActivity(browserIntent);
+                    } catch (Exception e) {
+                        Snackbar.make(tailscaleStatusText, "URL входа: " + status.authUrl, Snackbar.LENGTH_LONG).show();
+                    }
+                    startTailscaleLoginPolling();
+                }
+            } else {
+                tailscaleStatusText.setText(R.string.tailscale_status_not_logged_in);
+            }
+        }
+    }
+
+    private void startTailscaleLoginPolling() {
+        if (tailscalePollingActive) {
+            return;
+        }
+        tailscalePollingActive = true;
+        tailscaleUiHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (!tailscalePollingActive || isFinishing()) {
+                    return;
+                }
+                refreshTailscaleAccountAsync(false, false);
+                if (tailscalePollingActive) {
+                    tailscaleUiHandler.postDelayed(this, 2000);
+                }
+            }
+        }, 2000);
     }
 
     private void initializeRdpSpecificConnectionParameters() {
@@ -212,6 +425,7 @@ public class aRDP extends MainConfiguration {
         if (selected == null)
             return;
         super.updateViewFromSelected();
+        setVisibilityOfTailscaleWidgets(selected.getConnectionType() == Constants.CONN_TYPE_TAILSCALE ? View.VISIBLE : View.GONE);
         setRdpSpecificSettingsFromSelected();
         setRdpColorSpinnerPositionFromSelected();
         setRdpSecuritySpinnerPositionFromSelected();
@@ -270,6 +484,7 @@ public class aRDP extends MainConfiguration {
         if (selected == null) {
             return;
         }
+        saveTailscaleFieldsToManager();
         super.updateSelectedFromView();
         updateSelectedRdpSpecificSettingsFromViews();
         updateSelectedRdpResolutionTypeFromRdpGeometrySpinnerPosition();

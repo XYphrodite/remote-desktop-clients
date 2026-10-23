@@ -220,3 +220,10 @@ check_elf_alignment*
 remote-desktop-clients-libs-*
 
 venv
+
+common/aars/android-database-sqlcipher-*.aar
+!/.github/workflows/build-*
+!/tools/tsnet-bridge/build-*
+
+bVNC/libs/
+

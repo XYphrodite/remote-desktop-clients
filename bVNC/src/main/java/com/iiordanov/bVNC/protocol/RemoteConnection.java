@@ -43,6 +43,7 @@ import com.iiordanov.bVNC.Constants;
 import com.iiordanov.bVNC.Decoder;
 import com.iiordanov.bVNC.SSHConnection;
 import com.iiordanov.bVNC.Utils;
+import com.iiordanov.bVNC.tailscale.TsnetManager;
 import com.iiordanov.bVNC.input.KeyInputHandler;
 import com.iiordanov.bVNC.input.PointerInputHandler;
 import com.iiordanov.bVNC.input.RemoteKeyboard;
@@ -91,6 +92,7 @@ abstract public class RemoteConnection implements PointerInputHandler, KeyInputH
     Timer clipboardMonitorTimer;
     ClipboardMonitor clipboardMonitor;
     boolean sshTunneled;
+    boolean tailscaleTunneled;
     Context context;
     Viewable canvas;
     Thread connectionThread;
@@ -111,6 +113,7 @@ abstract public class RemoteConnection implements PointerInputHandler, KeyInputH
         this.canvas = canvas;
         this.hideKeyboardAndExtraKeys = hideKeyboardAndExtraKeys;
         this.sshTunneled = connection.getConnectionType() == Constants.CONN_TYPE_SSH;
+        this.tailscaleTunneled = Utils.isRdp(context) && connection.getConnectionType() == Constants.CONN_TYPE_TAILSCALE;
         this.clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
         // Startup the connection thread with a progress dialog
         this.pd = ProgressDialog.show(
@@ -300,6 +303,10 @@ abstract public class RemoteConnection implements PointerInputHandler, KeyInputH
         if (sshConnection != null) {
             sshConnection.terminateSSHTunnel();
             sshConnection = null;
+        }
+
+        if (tailscaleTunneled) {
+            TsnetManager.getInstance(context).stopForwarder();
         }
 
         if (connection != null && !Utils.isDoNotShowDesktopThumbnails(context)) {

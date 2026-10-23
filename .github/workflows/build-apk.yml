@@ -1,0 +1,91 @@
+name: Build aRDP + Tailscale APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Go
+        if: ${{ !hashFiles('common/aars/tsnet.aar') && hashFiles('tools/tsnet-bridge/go.mod') }}
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/tsnet-bridge/go.mod
+          cache-dependency-path: tools/tsnet-bridge/go.sum
+
+      - name: Build tsnet.aar from source (if not committed)
+        if: ${{ !hashFiles('common/aars/tsnet.aar') && hashFiles('tools/tsnet-bridge/go.mod') }}
+        run: |
+          mkdir -p common/aars
+          sed -i 's/\r$//' tools/tsnet-bridge/build-aar.sh
+          chmod +x tools/tsnet-bridge/build-aar.sh
+          ./tools/tsnet-bridge/build-aar.sh
+          cp tools/tsnet-bridge/tsnet.aar common/aars/tsnet.aar
+
+      - name: Download prebuilt FreeRDP dependencies & SQLCipher
+        run: |
+          sed -i 's/\r$//' ./download-prebuilt-dependencies.sh ./gradlew
+          chmod +x ./download-prebuilt-dependencies.sh ./gradlew
+          ./download-prebuilt-dependencies.sh
+          find bVNC/libs remoteClientLib/src/main/jniLibs -type f -name "*.so" ! -name "*libc++_shared*" -delete || true
+          mkdir -p common/aars
+          if [ ! -f "common/aars/android-database-sqlcipher-4.5.4.aar" ]; then
+            curl -L "https://repo1.maven.org/maven2/net/zetetic/android-database-sqlcipher/4.5.4/android-database-sqlcipher-4.5.4.aar" \
+              -o "common/aars/android-database-sqlcipher-4.5.4.aar"
+          fi
+
+      - name: Patch BookmarkBase.java (setGlyphCache compatibility)
+        run: |
+          BOOKMARK_FILE="remoteClientLib/jni/libs/deps/FreeRDP/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/domain/BookmarkBase.java"
+          if ! grep -q "setGlyphCache" "$BOOKMARK_FILE"; then
+            python3 -c '
+          p = "remoteClientLib/jni/libs/deps/FreeRDP/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/domain/BookmarkBase.java"
+          s = open(p).read()
+          s = s.replace("private boolean desktopComposition;", "private boolean desktopComposition;\n\t\tprivate boolean glyphCache;\n\t\tpublic boolean getGlyphCache() { return glyphCache; }\n\t\tpublic void setGlyphCache(boolean glyphCache) { this.glyphCache = glyphCache; }", 1)
+          open(p, "w").write(s)
+          '
+          fi
+
+      - name: Build aRDP APK
+        run: |
+          ./gradlew :aRDP-app:assembleDebug --no-daemon
+
+      - name: Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aRDP-Tailscale-APK
+          path: aRDP-app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Publish GitHub Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "aRDP + Tailscale $TAG" --generate-notes
+          gh release upload "$TAG" aRDP-app/build/outputs/apk/debug/*.apk --clobber

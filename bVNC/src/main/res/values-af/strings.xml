@@ -508,6 +508,7 @@ As u na \'n vinnige prestasie-hupstoot soek, probeer om die Kleurmodus na \'n la
     <string-array name="rdp_connection_type">
         <item>@string/connection_type_rdp</item>
         <item>@string/connection_type_rdp_over_ssh</item>
+        <item>@string/connection_type_rdp_over_tailscale</item>
     </string-array>
     <string name="rdp_descript_geom">Afgeleë werkskerm-grootte (BxH)</string>
     <string name="rdp_domain_hint">RDP-domein</string>

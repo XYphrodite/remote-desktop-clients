@@ -490,6 +490,7 @@ bVNCの対応機能は以下の通り：
     <string-array name="rdp_connection_type">
         <item>@string/connection_type_rdp</item>
         <item>@string/connection_type_rdp_over_ssh</item>
+        <item>@string/connection_type_rdp_over_tailscale</item>
     </string-array>
     <string name="rdp_descript_geom">リモートデスクトップサイズ（WxH)</string>
     <string name="rdp_domain_hint">RDPドメイン</string>

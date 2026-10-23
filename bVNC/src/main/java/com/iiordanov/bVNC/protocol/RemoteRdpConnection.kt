@@ -7,6 +7,7 @@ import com.iiordanov.bVNC.COLORMODEL
 import com.iiordanov.bVNC.Utils
 import com.iiordanov.bVNC.input.RemoteRdpKeyboard
 import com.iiordanov.bVNC.input.RemoteRdpPointer
+import com.iiordanov.bVNC.tailscale.TsnetManager
 import com.undatech.opaque.Connection
 import com.undatech.opaque.RdpCommunicator
 import com.undatech.opaque.Viewable
@@ -91,8 +92,8 @@ class RemoteRdpConnection(
     }
 
     /**
-     * If necessary, initializes an SSH tunnel and returns local forwarded port, or
-     * if SSH tunneling is not needed, returns the given port.
+     * If necessary, initializes an SSH or Tailscale tunnel and returns local forwarded port, or
+     * if tunneling is not needed, returns the given port.
      */
     @Throws(java.lang.Exception::class)
     fun getRemoteProtocolPort(port: Int): Int {
@@ -100,6 +101,8 @@ class RemoteRdpConnection(
             if (sshTunneled && !connection.rdpGatewayEnabled) {
                 constructSshConnectionIfNeeded()
                 sshConnection.createLocalPortForward(port)
+            } else if (tailscaleTunneled && !connection.rdpGatewayEnabled) {
+                TsnetManager.getInstance(context).startForwarder(connection.address, port)
             } else {
                 port
             }
@@ -108,8 +111,8 @@ class RemoteRdpConnection(
 
 
     /**
-     * If necessary, initializes an SSH tunnel and returns local forwarded port, or
-     * if SSH tunneling is not needed, returns the given port.
+     * If necessary, initializes an SSH or Tailscale tunnel and returns local forwarded port, or
+     * if tunneling is not needed, returns the given port.
      */
     @Throws(java.lang.Exception::class)
     private fun getGatewayPort(port: Int): Int {
@@ -117,21 +120,23 @@ class RemoteRdpConnection(
         if (sshTunneled) {
             constructSshConnectionIfNeeded()
             result = sshConnection.createLocalPortForward(port)
+        } else if (tailscaleTunneled) {
+            result = TsnetManager.getInstance(context).startForwarder(connection.rdpGatewayHostname, port)
         }
         return result
     }
 
     /**
-     * Returns localhost if using SSH tunnel (without gateway). If the address is prefixed with
+     * Returns localhost if using SSH or Tailscale tunnel (without gateway). If the address is prefixed with
      * {@code \\}, strips the prefix and resolves the name via NetBIOS. Otherwise returns the
      * address as-is.
      */
     override fun getAddress(): String? {
         val address = connection.address ?: return null
-        val sshTunneledAndNoGatewayConfig = sshTunneled && !connection.rdpGatewayEnabled
+        val tunneledAndNoGatewayConfig = (sshTunneled || tailscaleTunneled) && !connection.rdpGatewayEnabled
         val netBiosResolutionForced = address.startsWith("\\\\")
         val result = when {
-            sshTunneledAndNoGatewayConfig -> "127.0.0.1"
+            tunneledAndNoGatewayConfig -> "127.0.0.1"
             netBiosResolutionForced -> address.substring(2).let { addressWithoutPrefix ->
                 Utils.resolveNetbiosAddress(addressWithoutPrefix) ?: addressWithoutPrefix
             }
@@ -141,10 +146,10 @@ class RemoteRdpConnection(
     }
     
     /**
-     * Returns localhost if using SSH tunnel or saved address.
+     * Returns localhost if using SSH or Tailscale tunnel or saved address.
      */
     private fun getGatewayAddress(): String? {
-        return if (sshTunneled) {
+        return if (sshTunneled || tailscaleTunneled) {
             "127.0.0.1"
         } else {
             connection.rdpGatewayHostname

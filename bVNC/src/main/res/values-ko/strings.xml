@@ -471,6 +471,7 @@ bVNC의 대응 기능는 이하와 같습니다 :
     <string-array name="rdp_connection_type">
         <item>@string/connection_type_rdp</item>
         <item>@string/connection_type_rdp_over_ssh</item>
+        <item>@string/connection_type_rdp_over_tailscale</item>
     </string-array>
     <string name="rdp_descript_geom">리모트 데스크탑 크기(WxH)</string>
     <string name="rdp_domain_hint">RDP도메인</string>

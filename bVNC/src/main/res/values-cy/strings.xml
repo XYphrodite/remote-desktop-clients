@@ -507,6 +507,7 @@ Os ydych chi\'n chwilio am hwb perfformiad cyflym, ceisiwch osod y modd Lliw i w
     <string-array name="rdp_connection_type">
         <item>@string/connection_type_rdp</item>
         <item>@string/connection_type_rdp_over_ssh</item>
+        <item>@string/connection_type_rdp_over_tailscale</item>
     </string-array>
     <string name="rdp_descript_geom">Maint y Bwrdd Gwaith Pell (LxU)</string>
     <string name="rdp_domain_hint">Parth RDP</string>

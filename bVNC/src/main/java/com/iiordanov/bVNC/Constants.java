@@ -36,6 +36,7 @@ public class Constants {
     public static final int CONN_TYPE_PLAIN = 0;
     public static final int CONN_TYPE_SSH = 1;
     public static final int CONN_TYPE_ULTRAVNC = 2;
+    public static final int CONN_TYPE_TAILSCALE = 2;
     public static final int CONN_TYPE_ANONTLS = 3;
     public static final int CONN_TYPE_VENCRYPT = 4;
     public static final int CONN_TYPE_STUNNEL = 5;

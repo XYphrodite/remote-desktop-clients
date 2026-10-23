@@ -85,7 +85,7 @@ public class ConnectionBean extends AbstractConnectionBean implements Comparable
         setPassword("");
         setKeepPassword(true);
         setNickname("");
-        setConnectionType(Constants.CONN_TYPE_PLAIN);
+        setConnectionType((context != null && Utils.isRdp(context)) ? Constants.CONN_TYPE_TAILSCALE : Constants.CONN_TYPE_PLAIN);
         setSshServer("");
         setSshPort(Constants.DEFAULT_SSH_PORT);
         setSshUser("");
@@ -273,6 +273,8 @@ public class ConnectionBean extends AbstractConnectionBean implements Comparable
             if (!"".equals(this.getSshServer())) {
                 address = "SSH " + this.getSshUser() + "@" + this.getSshServer() + ":" +
                         this.getSshPort() + "\n" + address;
+            } else if (this.getConnectionType() == Constants.CONN_TYPE_TAILSCALE) {
+                address = "Tailscale " + address;
             }
         }
         return nickname + address;

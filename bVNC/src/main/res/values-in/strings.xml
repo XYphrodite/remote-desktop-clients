@@ -507,6 +507,7 @@ Jika Anda mencari peningkatan kinerja cepat, coba atur Mode Warna ke nilai yang 
     <string-array name="rdp_connection_type">
         <item>@string/connection_type_rdp</item>
         <item>@string/connection_type_rdp_over_ssh</item>
+        <item>@string/connection_type_rdp_over_tailscale</item>
     </string-array>
     <string name="rdp_descript_geom">Ukuran Desktop Jarak Jauh (LxT)</string>
     <string name="rdp_domain_hint">Domain RDP</string>

@@ -435,9 +435,18 @@
     <string name="rdp_adv_remotefx">Включить RemoteFX</string>
     <string name="rdp_adv_visual_styles">Включить визуальные стили</string>
     <string name="rdp_adv_window_contents">Отображать содержимое окна при перетаскивании</string>
+    <string name="connection_type_rdp_over_tailscale">RDP через вшитый Tailscale</string>
+    <string name="tailscale_settings_caption">Вшитый Tailscale (Userspace / без слота VPN)</string>
+    <string name="tailscale_status_not_logged_in">Статус: вход не выполнен (войдите через браузер или укажите Auth Key)</string>
+    <string name="tailscale_login_button">Войти через браузер / Обновить ПК</string>
+    <string name="tailscale_logout_button">Выйти</string>
+    <string name="tailscale_peers_label">Ваши Windows-ПК в Tailscale (выберите для подстановки IP):</string>
+    <string name="tailscale_authkey_hint">Tailscale Auth Key (tskey-auth-... опционально)</string>
+    <string name="tailscale_hostname_hint">Имя телефона в Tailscale (например, ardp-mobile)</string>
     <string-array name="rdp_connection_type">
         <item>@string/connection_type_rdp</item>
         <item>@string/connection_type_rdp_over_ssh</item>
+        <item>@string/connection_type_rdp_over_tailscale</item>
     </string-array>
     <string name="rdp_descript_geom">Размер удаленного рабочего стола (ШxВ)</string>
     <string name="rdp_domain_hint">RDP Домен</string>

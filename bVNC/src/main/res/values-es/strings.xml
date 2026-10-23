@@ -493,6 +493,7 @@ Si está buscando un aumento rápido del rendimiento, intente configurar el modo
     <string-array name="rdp_connection_type">
         <item>@string/connection_type_rdp</item>
         <item>@string/connection_type_rdp_over_ssh</item>
+        <item>@string/connection_type_rdp_over_tailscale</item>
     </string-array>
     <string name="rdp_descript_geom">Tamaño del escritorio remoto (ancho x alto)</string>
     <string name="rdp_domain_hint">Dominio RDP</string>

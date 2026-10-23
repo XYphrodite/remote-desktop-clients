@@ -247,9 +247,14 @@ public abstract class MainConfiguration extends AppCompatActivity {
                 selected.save(MainConfiguration.this);
                 if (selectedConnType == Constants.CONN_TYPE_PLAIN) {
                     setVisibilityOfSshWidgets(View.GONE);
+                    setVisibilityOfTailscaleWidgets(View.GONE);
                 } else if (selectedConnType == Constants.CONN_TYPE_SSH) {
                     setVisibilityOfSshWidgets(View.VISIBLE);
+                    setVisibilityOfTailscaleWidgets(View.GONE);
                     setIpTextToLocalhostIfEmpty();
+                } else if (selectedConnType == Constants.CONN_TYPE_TAILSCALE) {
+                    setVisibilityOfSshWidgets(View.GONE);
+                    setVisibilityOfTailscaleWidgets(View.VISIBLE);
                 }
                 updateViewFromSelected();
             }
@@ -321,6 +326,9 @@ public abstract class MainConfiguration extends AppCompatActivity {
         sshCaption.setVisibility(visibility);
         layoutUseSshPubkey.setVisibility(visibility);
         sshServerEntry.setVisibility(visibility);
+    }
+
+    protected void setVisibilityOfTailscaleWidgets(int visibility) {
     }
 
     @Override

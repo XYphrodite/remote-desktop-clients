@@ -507,6 +507,7 @@ Kui soovite kiiret jõudluse parandust, proovige seada värvirežiim madalamale 
     <string-array name="rdp_connection_type">
         <item>@string/connection_type_rdp</item>
         <item>@string/connection_type_rdp_over_ssh</item>
+        <item>@string/connection_type_rdp_over_tailscale</item>
     </string-array>
     <string name="rdp_descript_geom">Kaugtöölaua suurus (LxK)</string>
     <string name="rdp_domain_hint">RDP domeen</string>
