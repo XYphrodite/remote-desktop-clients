@@ -120,7 +120,7 @@ class RemoteRdpConnection(
         if (sshTunneled) {
             constructSshConnectionIfNeeded()
             result = sshConnection.createLocalPortForward(port)
-        } else if (tailscaleTunneled) {
+        } else if (tailscaleTunneled && connection.rdpGatewayEnabled) {
             result = TsnetManager.getInstance(context).startForwarder(connection.rdpGatewayHostname, port)
         }
         return result
@@ -149,7 +149,7 @@ class RemoteRdpConnection(
      * Returns localhost if using SSH or Tailscale tunnel or saved address.
      */
     private fun getGatewayAddress(): String? {
-        return if (sshTunneled || tailscaleTunneled) {
+        return if (sshTunneled || (tailscaleTunneled && connection.rdpGatewayEnabled)) {
             "127.0.0.1"
         } else {
             connection.rdpGatewayHostname

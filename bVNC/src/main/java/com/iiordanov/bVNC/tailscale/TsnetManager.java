@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -245,7 +246,7 @@ public final class TsnetManager {
             return authKeyTsnet;
         }
         AccountStatus status = pollAccountStatus(true);
-        for (int i = 0; !status.running && i < 8; i++) {
+        for (int i = 0; !status.running && !"NeedsLogin".equals(status.state) && i < 24; i++) {
             Thread.sleep(500);
             status = pollAccountStatus(false);
         }
@@ -258,7 +259,7 @@ public final class TsnetManager {
     }
 
     /**
-     * Starts a local multi-connection TCP forwarder on 127.0.0.1:0 that bridges every incoming
+     * Starts a local multi-connection TCP forwarder on 127.0.0.1 that bridges every incoming
      * FreeRDP TCP connection (including NLA retries and resolution changes) over userspace tsnet.
      */
     public synchronized int startForwarder(final String targetHost, final int targetPort) throws Exception {
@@ -270,7 +271,17 @@ public final class TsnetManager {
 
         stopForwarder();
 
-        final ServerSocket serverSocket = new ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"));
+        InetAddress loopback = InetAddress.getByName("127.0.0.1");
+        int preferredPort = 33000 + Math.floorMod((cleanHost + ":" + targetPort).hashCode(), 20000);
+        ServerSocket boundSocket;
+        try {
+            boundSocket = new ServerSocket();
+            boundSocket.setReuseAddress(true);
+            boundSocket.bind(new InetSocketAddress(loopback, preferredPort), 50);
+        } catch (IOException e) {
+            boundSocket = new ServerSocket(0, 50, loopback);
+        }
+        final ServerSocket serverSocket = boundSocket;
         activeForwardServer = serverSocket;
         final int localPort = serverSocket.getLocalPort();
         Log.i(TAG, "Started local tsnet RDP forwarder 127.0.0.1:" + localPort + " -> " + cleanHost + ":" + targetPort);
