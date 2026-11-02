@@ -192,6 +192,9 @@ public class ConnectionGridActivity extends AppCompatActivity implements GetText
         }
         FileUtils.logFilesInPrivateStorage(this);
         FileUtils.deletePrivateFileIfExisting(this, ".config/freerdp/licenses");
+        if (Utils.isRdp(this)) {
+            com.iiordanov.bVNC.tailscale.TsnetManager.getInstance(this).warmUpInBackground();
+        }
         addNewConnection = findViewById(R.id.addNewConnection);
         addNewConnection.setOnClickListener(v -> addNewConnection());
         popUpMenuButton = findViewById(R.id.popUpMenuButton);

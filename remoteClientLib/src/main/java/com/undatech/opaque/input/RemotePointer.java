@@ -19,7 +19,7 @@ public abstract class RemotePointer {
     private static final String TAG = "RemotePointer";
 
     public static final int POINTER_DOWN_MASK = 0x8000; // 32768
-    public static float DEFAULT_SENSITIVITY = 2.0f;
+    public static float DEFAULT_SENSITIVITY = 2.8f;
     public static boolean DEFAULT_ACCELERATED = true;
     /**
      * Current state of "mouse" buttons

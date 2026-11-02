@@ -332,7 +332,7 @@ public class RemoteCanvas extends AppCompatImageView implements Viewable {
         synchronized (this) {
             if (!isVnc) {
                 Log.i(TAG, "Using UltraCompactBufferBitmapData.");
-                myDrawable = new UltraCompactBitmapData(dx, dy, this, isSpice | isOpaque);
+                myDrawable = new UltraCompactBitmapData(dx, dy, this, isSpice || isOpaque || (isRdp && connection.getRdpColor() > 16));
             } else {
                 try {
                     if (!compact) {
@@ -340,14 +340,14 @@ public class RemoteCanvas extends AppCompatImageView implements Viewable {
                         myDrawable = new FullBufferBitmapData(dx, dy, this);
                     } else {
                         Log.i(TAG, "Using CompactBufferBitmapData.");
-                        myDrawable = new CompactBitmapData(dx, dy, this, isSpice | isOpaque);
+                        myDrawable = new CompactBitmapData(dx, dy, this, isSpice || isOpaque || (isRdp && connection.getRdpColor() > 16));
                     }
                 } catch (Throwable e) { // If despite our efforts we fail to allocate memory, use CompactBitmapData.
                     Log.e(TAG, "Could not allocate drawable, attempting to use CompactBitmapData.");
                     if (myDrawable != null) {
                         myDrawable.dispose();
                     }
-                    myDrawable = new CompactBitmapData(dx, dy, this, isSpice | isOpaque);
+                    myDrawable = new CompactBitmapData(dx, dy, this, isSpice || isOpaque || (isRdp && connection.getRdpColor() > 16));
                 }
             }
         }

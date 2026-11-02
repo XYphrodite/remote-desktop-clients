@@ -33,6 +33,7 @@ import androidx.annotation.NonNull;
 
 import com.antlersoft.android.dbimpl.NewInstance;
 import com.iiordanov.bVNC.input.TouchInputHandlerDirectSwipePan;
+import com.iiordanov.bVNC.input.TouchInputHandlerTouchpad;
 import com.iiordanov.util.NetworkUtils;
 import com.undatech.opaque.util.GeneralUtils;
 import com.undatech.remoteClientUi.R;
@@ -123,24 +124,29 @@ public class ConnectionBean extends AbstractConnectionBean implements Comparable
         setPrefEncoding(RfbProto.EncodingTight);
         setScaleMode(scaling);
         setInputMode(inputMode);
+        if (TouchInputHandlerTouchpad.ID.equals(inputMode)) {
+            setFollowMouse(true);
+            setFollowPan(true);
+        }
         setUseDpadAsArrows(useDpadAsArrows);
         setRotateDpad(false);
         setUsePortrait(false);
-        setUseLocalCursor(Constants.CURSOR_AUTO);
+        setUseLocalCursor((context != null && Utils.isRdp(context)) ? Constants.CURSOR_FORCE_LOCAL : Constants.CURSOR_AUTO);
         setRepeaterId("");
         setExtraKeysToggleType(1);
         setMetaListId(1);
         setRdpResType(0);
         setRdpWidth(0);
         setRdpHeight(0);
-        setRdpColor(Constants.DEFAULT_RDP_COLOR_MODE);
+        boolean isRdpApp = context != null && Utils.isRdp(context);
+        setRdpColor(isRdpApp ? 32 : Constants.DEFAULT_RDP_COLOR_MODE);
         setRemoteFx(true);
-        setDesktopBackground(false);
-        setFontSmoothing(false);
-        setDesktopComposition(false);
-        setWindowContents(false);
-        setMenuAnimation(false);
-        setVisualStyles(false);
+        setDesktopBackground(isRdpApp);
+        setFontSmoothing(isRdpApp);
+        setDesktopComposition(isRdpApp);
+        setWindowContents(isRdpApp);
+        setMenuAnimation(isRdpApp);
+        setVisualStyles(isRdpApp);
         setConsoleMode(false);
         setRedirectSdCard(false);
         setEnableSound(false);
@@ -154,7 +160,7 @@ public class ConnectionBean extends AbstractConnectionBean implements Comparable
         setScreenshotFilename(Utils.newScreenshotFileName());
 
         setEnableGfx(true);
-        setEnableGfxH264(true);
+        setEnableGfxH264(!isRdpApp);
         setPreferSendingUnicode(preferSendingUnicode);
         setExternalId("");
         setRequiresVpn(false);
@@ -171,7 +177,7 @@ public class ConnectionBean extends AbstractConnectionBean implements Comparable
         setUseLastPositionToolbarMoved(false);
 
         setRdpGatewayPort(Constants.DEFAULT_RDP_GATEWAY_PORT);
-        setDesktopScalePercentage(Constants.DEFAULT_DESKTOP_SCALE_PERCENTAGE);
+        setDesktopScalePercentage(isRdpApp ? 175 : Constants.DEFAULT_DESKTOP_SCALE_PERCENTAGE);
         setEnableGlyphCache(ENABLE_GLYPH_CACHE_DEFAULT);
         setInvisible(Constants.INVISIBLE_DEFAULT);
         if (context != null) {
@@ -182,7 +188,7 @@ public class ConnectionBean extends AbstractConnectionBean implements Comparable
     private static String getDefaultInputMode(Context context) {
         String inputMode;
         inputMode = Utils.querySharedPreferenceString(context, Constants.defaultInputMethodTag,
-                TouchInputHandlerDirectSwipePan.ID);
+                Utils.isRdp(context) ? TouchInputHandlerTouchpad.ID : TouchInputHandlerDirectSwipePan.ID);
         return inputMode;
     }
 

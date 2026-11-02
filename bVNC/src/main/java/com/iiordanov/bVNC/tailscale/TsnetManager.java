@@ -90,10 +90,38 @@ public final class TsnetManager {
     private String startedControlUrl = "";
 
     private ServerSocket activeForwardServer;
+    private volatile boolean warmUpStarted = false;
 
     private TsnetManager(Context appContext) {
         this.appContext = appContext;
         this.prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    }
+
+    /**
+     * Pre-warms userspace Tailscale in the background when credentials/state already exist
+     * so connecting from the tile grid does not wait on cold control-plane/DERP bootstrap.
+     */
+    public void warmUpInBackground() {
+        if (warmUpStarted) {
+            return;
+        }
+        warmUpStarted = true;
+        Thread warmThread = new Thread(() -> {
+            try {
+                if (!getAuthKey().isEmpty()) {
+                    ensureAuthKeyStarted();
+                } else {
+                    File stateFile = new File(getBaseStateDir("tsnet-account"), "tailscaled.state");
+                    if (stateFile.exists() && stateFile.length() > 0) {
+                        pollAccountStatus(true);
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Background tsnet warm-up skipped/failed: " + e.getMessage());
+            }
+        }, "TsnetWarmUp");
+        warmThread.setDaemon(true);
+        warmThread.start();
     }
 
     public String getAuthKey() {
@@ -246,13 +274,18 @@ public final class TsnetManager {
             return authKeyTsnet;
         }
         AccountStatus status = pollAccountStatus(true);
-        for (int i = 0; !status.running && !"NeedsLogin".equals(status.state) && i < 24; i++) {
+        for (int i = 0; !status.running && !"NeedsLogin".equals(status.state) && i < 60; i++) {
             Thread.sleep(500);
             status = pollAccountStatus(false);
         }
         if (!status.running) {
-            throw new IllegalStateException(
-                    "Tailscale не авторизован. Войдите через браузер или укажите Auth Key в настройках подключения."
+            if ("NeedsLogin".equals(status.state) || status.state.isEmpty()) {
+                throw new IllegalStateException(
+                        "Tailscale не авторизован. Войдите через браузер или укажите Auth Key в настройках подключения."
+                );
+            }
+            throw new IOException(
+                    "Не удалось подключиться к сети Tailscale (состояние: " + status.state + "). Проверьте интернет/VPN и попробуйте снова."
             );
         }
         return ensureAccountTsnet();
@@ -312,7 +345,14 @@ public final class TsnetManager {
     private void bridgeConnection(Tsnet_ ts, String targetHost, int targetPort, Socket clientSocket) {
         Socket upstreamSocket = null;
         try {
-            String endpoint = ts.dialLoopback(targetHost, (long) targetPort);
+            String endpoint;
+            try {
+                endpoint = ts.dialLoopback(targetHost, (long) targetPort);
+            } catch (Exception firstErr) {
+                Log.w(TAG, "First tsnet dialLoopback failed, retrying in 1.5s: " + firstErr.getMessage());
+                Thread.sleep(1500);
+                endpoint = ts.dialLoopback(targetHost, (long) targetPort);
+            }
             if (endpoint == null || !endpoint.contains(":")) {
                 throw new IOException("tsnet dialLoopback returned invalid endpoint: " + endpoint);
             }

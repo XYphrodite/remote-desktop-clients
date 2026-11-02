@@ -188,7 +188,7 @@ public class Constants {
     public static final int MAX_DESKTOP_SCALE_PERCENTAGE = 300;
     public static volatile int DEFAULT_PROTOCOL_PORT = 5900;
     public static final int DEFAULT_SCROLL_SPEED = 6;
-    public static final int DEFAULT_TOUCHPAD_SENSITIVITY = 4;
+    public static final int DEFAULT_TOUCHPAD_SENSITIVITY = 6;
 
     public static final String DEFAULT_VPN_URI_SCHEME = "vpn";
 

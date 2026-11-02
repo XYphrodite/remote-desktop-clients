@@ -45,7 +45,7 @@
         android:max="20"
         android:title="@string/scroll_speed" />
     <SeekBarPreference
-        android:defaultValue="4"
+        android:defaultValue="6"
         android:key="touchpadSensitivity"
         android:max="11"
         android:title="@string/touchpad_sensitivity" />

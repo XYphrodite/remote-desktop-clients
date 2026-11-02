@@ -12,8 +12,19 @@ import (
 	"sync"
 	"time"
 
+	"tailscale.com/envknob"
 	"tailscale.com/tsnet"
 )
+
+func init() {
+	// Keep WireGuard traffic on HTTPS DERP (TCP 443) with a conservative MTU so
+	// userspace tsnet remains stable when Android routes traffic through an outer
+	// system VPN/proxy (e.g. VLESS/Xray TUN) where UDP paths blackhole full frames.
+	_ = os.Setenv("TS_DEBUG_ALWAYS_USE_DERP", "true")
+	_ = os.Setenv("TS_DEBUG_MTU", "1200")
+	envknob.Setenv("TS_DEBUG_ALWAYS_USE_DERP", "true")
+	envknob.Setenv("TS_DEBUG_MTU", "1200")
+}
 
 // Tsnet — gomobile биндинг. Экспортируется как org.terminalv.tsnet.Tsnet (Java) и Tsnet (ObjC).
 // Userspace, без TUN, не конфликтует с Happ — только Dial для SSH.
@@ -38,6 +49,8 @@ func (t *Tsnet) Account(command, payload string) (string, error) {
 			_ = os.Setenv("XDG_CACHE_HOME", filepath.Join(files, "cache"))
 			_ = os.Setenv("XDG_CONFIG_HOME", files)
 			_ = os.MkdirAll(filepath.Join(files, "cache"), 0700)
+			envknob.Setenv("TS_DEBUG_ALWAYS_USE_DERP", "true")
+			envknob.Setenv("TS_DEBUG_MTU", "1200")
 			srv := &tsnet.Server{Dir: args.StateDir, Hostname: args.Hostname, Ephemeral: false, Logf: func(string, ...any) {}}
 			if err := srv.Start(); err != nil { t.mu.Unlock(); return "", err }
 			t.srv = srv
@@ -105,6 +118,8 @@ func (t *Tsnet) Start(authKey, hostname, controlURL, stateDir string, logVerbosi
 		_ = os.MkdirAll(filepath.Join(filesDir, "cache"), 0700)
 		_ = os.MkdirAll(filepath.Join(filesDir, "data"), 0700)
 	}
+	envknob.Setenv("TS_DEBUG_ALWAYS_USE_DERP", "true")
+	envknob.Setenv("TS_DEBUG_MTU", "1200")
 	srv := &tsnet.Server{
 		Dir:        stateDir,
 		Hostname:   hostname,
@@ -164,7 +179,7 @@ func (t *Tsnet) Dial(host string, port int) (net.Conn, error) {
 		return nil, fmt.Errorf("tsnet not started — call Start first")
 	}
 	// tsnet.Server.Dial — userspace dial без системного TUN
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	addr := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 	// Проверяем что host резолвится в tailnet
